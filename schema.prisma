@@ -1,0 +1,75 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["extendedWhereUnique"]
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              Int             @id @default(autoincrement())
+  username        String          @unique
+  password        String
+  role            UserRole
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  // Relations
+  createdOrders   PurchaseOrder[] @relation("CreatedOrders")
+  approvals       Approval[]      @relation("ApproverRelation")
+}
+
+enum UserRole {
+  REQUESTER
+  APPROVER1
+  APPROVER2
+  APPROVER3
+  APPROVER4
+  APPROVER5
+}
+
+model PurchaseOrder {
+  id          Int             @id @default(autoincrement())
+  title       String
+  amount      Float
+  createdBy   Int
+  status      OrderStatus     @default(PENDING)
+  createdAt   DateTime        @default(now())
+  
+  // Relations
+  creator     User            @relation("CreatedOrders", fields: [createdBy], references: [id])
+  approvals   Approval[]
+}
+
+enum OrderStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model Approval {
+  id          Int             @id @default(autoincrement())
+  orderId     Int
+  step        Int             // 1 to 5 representing approval step
+  approverId  Int?            // Nullable until assigned
+  decision    ApprovalDecision?
+  notes       String?
+  approvedAt  DateTime?
+  
+  // Relations
+  order       PurchaseOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  approver    User?           @relation("ApproverRelation", fields: [approverId], references: [id])
+  
+  @@unique([orderId, step])
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+}
