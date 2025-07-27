@@ -36,6 +36,17 @@ page DashboardPage {
   authRequired: true
 }
 
+route CreateOrderRoute { path: "/create-order", to: CreateOrderPage }
+page CreateOrderPage {
+  component: import CreateOrder from "@client/CreateOrderPage.jsx",
+  authRequired: true
+}
+
+action createPurchaseOrder {
+  fn: import { createPurchaseOrder } from "@server/actions.js",
+  entities: [User, PurchaseOrder, Approval]
+}
+
 entity User {=psl
   id          Int     @id @default(autoincrement())
   username    String  @unique
@@ -43,6 +54,39 @@ entity User {=psl
   role        UserRole
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  
+  // Relations
+  createdOrders   PurchaseOrder[] @relation("CreatedOrders")
+  approvals       Approval[]      @relation("ApproverRelation")
+psl=}
+
+entity PurchaseOrder {=psl
+  id          Int             @id @default(autoincrement())
+  title       String
+  amount      Float
+  createdBy   Int
+  status      OrderStatus     @default(PENDING)
+  createdAt   DateTime        @default(now())
+  
+  // Relations
+  creator     User            @relation("CreatedOrders", fields: [createdBy], references: [id])
+  approvals   Approval[]
+psl=}
+
+entity Approval {=psl
+  id          Int             @id @default(autoincrement())
+  orderId     Int
+  step        Int             // 1 to 5 representing approval step
+  approverId  Int?            // Nullable until assigned
+  decision    ApprovalDecision?
+  notes       String?
+  approvedAt  DateTime?
+  
+  // Relations
+  order       PurchaseOrder   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  approver    User?           @relation("ApproverRelation", fields: [approverId], references: [id])
+  
+  @@unique([orderId, step])
 psl=}
 
 enum UserRole {
@@ -52,4 +96,16 @@ enum UserRole {
   APPROVER3
   APPROVER4
   APPROVER5
+}
+
+enum OrderStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
 }
